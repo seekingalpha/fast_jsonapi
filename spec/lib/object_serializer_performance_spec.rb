@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'spec_helper'
 
 describe FastJsonapi::ObjectSerializer, performance: true do
@@ -22,7 +24,7 @@ describe FastJsonapi::ObjectSerializer, performance: true do
     },
     ams: {
       name: 'AMS serializer',
-      speed_factor: 25,
+      speed_factor: 5,
       hash_method: :as_json
     },
     jsonapi: {

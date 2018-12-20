@@ -1,13 +1,16 @@
 # frozen_string_literal: true
 
 require 'active_support/concern'
-require 'fast_jsonapi/multi_to_json'
+require 'logger'
+require 'fast_jsonapi/serialization_cache'
+require 'lru_redux'
 
 module FastJsonapi
   MandatoryField = Class.new(StandardError)
+  CACHE = Cache::SerializationCache.instance
 
   module SerializationCore
-    extend ActiveSupport::Concern
+    extend ::ActiveSupport::Concern
 
     included do
       class << self
@@ -18,8 +21,9 @@ module FastJsonapi
                       :transform_method,
                       :record_type,
                       :record_id,
-                      :cache_length,
-                      :race_condition_ttl,
+                      :prefix_key,
+                      :vary_cache_params,
+                      :vary_cache_attributes,
                       :cached,
                       :data_links,
                       :meta_to_serialize
@@ -27,6 +31,29 @@ module FastJsonapi
     end
 
     class_methods do
+      def record_hash_cache_key(fieldset, record, params)
+        cache_hash             = {
+            fieldset:          fieldset,
+            prefix_key:        self.prefix_key,
+            name:              self.name,
+            record_type:       self.record_type,
+            data_links:        self.data_links,
+            meta_to_serialize: self.meta_to_serialize,
+            cache_key:         record.cache_key
+        }
+
+        vary_cache_params&.each_with_object(cache_hash) do |it, collector|
+          collector["vary_param_#{it}".to_sym] = params[it]
+        end
+
+        vary_cache_attributes&.each_with_object(cache_hash) do |it, collector|
+          collector["vary_attribute_#{it}".to_sym] = record.public_send(it)
+        end
+
+        serialization_settings = ::Oj.dump(cache_hash, mode: :compat)
+        ::XXhash.xxh32(serialization_settings)
+      end
+
       def id_hash(id, record_type, default_return=false)
         if id.present?
           { id: id.to_s, type: record_type }
@@ -64,7 +91,9 @@ module FastJsonapi
 
       def record_hash(record, fieldset, params = {})
         if cached
-          record_hash = Rails.cache.fetch(record.cache_key, expires_in: cache_length, race_condition_ttl: race_condition_ttl) do
+          cache_key = record_hash_cache_key(fieldset, record, params)
+
+          record_hash = CACHE.getset(cache_key) do
             temp_hash = id_hash(id_from_record(record), record_type, true)
             temp_hash[:attributes] = attributes_hash(record, fieldset, params) if attributes_to_serialize.present?
             temp_hash[:relationships] = {}
@@ -86,7 +115,7 @@ module FastJsonapi
       end
 
       def id_from_record(record)
-        return record_id.call(record) if record_id.is_a?(Proc)
+        return record_id.call(record) if record_id.is_a?(::Proc)
         return record.send(record_id) if record_id
         raise MandatoryField, 'id is a mandatory field in the jsonapi spec' unless record.respond_to?(:id)
         record.id
@@ -94,7 +123,7 @@ module FastJsonapi
 
       # Override #to_json for alternative implementation
       def to_json(payload)
-        FastJsonapi::MultiToJson.to_json(payload) if payload.present?
+        ::Oj.dump(payload, mode: :compat, time_format: :ruby, use_to_json: true) if payload.present?
       end
 
       def parse_include_item(include_item)
@@ -120,7 +149,10 @@ module FastJsonapi
             next unless relationships_to_serialize && relationships_to_serialize[item]
             relationship_item = relationships_to_serialize[item]
             next unless relationship_item.include_relationship?(record, params)
-            unless relationship_item.polymorphic.is_a?(Hash)
+
+            polymorphic_hash = relationship_item.polymorphic.is_a?(::Hash) ? relationship_item.polymorphic : nil
+
+            unless polymorphic_hash
               record_type = relationship_item.record_type
               serializer = relationship_item.serializer.to_s.constantize
             end
@@ -131,9 +163,9 @@ module FastJsonapi
             included_objects = [included_objects] unless relationship_type == :has_many
 
             included_objects.each do |inc_obj|
-              if relationship_item.polymorphic.is_a?(Hash)
-                record_type = inc_obj.class.name.demodulize.underscore
-                serializer = self.compute_serializer_name(inc_obj.class.name.demodulize.to_sym).to_s.constantize
+              if polymorphic_hash
+                record_type = polymorphic_hash[ inc_obj.class]
+                serializer = self.compute_serializer_name(record_type.to_s.underscore.to_sym).to_s.constantize
               end
 
               if remaining_items(items)

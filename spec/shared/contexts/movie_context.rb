@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 RSpec.shared_context 'movie class' do
 
   # Movie, Actor Classes and serializers

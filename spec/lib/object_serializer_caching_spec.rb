@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'spec_helper'
 
 describe FastJsonapi::ObjectSerializer do
@@ -5,9 +7,7 @@ describe FastJsonapi::ObjectSerializer do
 
   context 'when caching has_many' do
     before(:each) do
-      rails = OpenStruct.new
-      rails.cache = ActiveSupport::Cache::MemoryStore.new
-      stub_const('Rails', rails)
+      ::FastJsonapi::Cache::SerializationCache.instance.clear
     end
 
     it 'returns correct hash when serializable_hash is called' do

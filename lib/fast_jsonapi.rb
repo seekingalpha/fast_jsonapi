@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 module FastJsonapi
+  require 'oj'
+  require 'xxhash'
   require 'fast_jsonapi/object_serializer'
   if defined?(::Rails)
     require 'fast_jsonapi/railtie'

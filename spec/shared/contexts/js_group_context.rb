@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 RSpec.shared_context 'jsonapi-serializers group class' do
 
   # Person, Group Classes and serializers

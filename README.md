@@ -6,7 +6,7 @@ A lightning fast [JSON:API](http://jsonapi.org/) serializer for Ruby Objects.
 
 # Performance Comparison
 
-We compare serialization times with Active Model Serializer as part of RSpec performance tests included on this library. We want to ensure that with every change on this library, serialization time is at least `25 times` faster than Active Model Serializers on up to current benchmark of 1000 records. Please read the [performance document](https://github.com/Netflix/fast_jsonapi/blob/master/performance_methodology.md) for any questions related to methodology.
+We compare serialization times with Active Model Serializer as part of RSpec performance tests included on this library. We want to ensure that with every change on this library, serialization time is at least `8-25 times` faster than Active Model Serializers on up to current benchmark of 1000 records. Please read the [performance document](https://github.com/Netflix/fast_jsonapi/blob/master/performance_methodology.md) for any questions related to methodology.
 
 ## Benchmark times for 250 records
 
@@ -341,7 +341,7 @@ Requires a `cache_key` method be defined on model:
 class MovieSerializer
   include FastJsonapi::ObjectSerializer
   set_type :movie  # optional
-  cache_options enabled: true, cache_length: 12.hours
+  cache_options enabled: true
   attributes :name, :year
 end
 ```
@@ -451,7 +451,7 @@ Option | Purpose | Example
 set_type | Type name of Object | ```set_type :movie ```
 key | Key of Object | ```belongs_to :owner, key: :user ```
 set_id | ID of Object | ```set_id :owner_id ``` or ```set_id { |record| "#{record.name.downcase}-#{record.id}" }```
-cache_options | Hash to enable caching and set cache length | ```cache_options enabled: true, cache_length: 12.hours, race_condition_ttl: 10.seconds```
+cache_options | Hash to enable caching and set cache length | ```cache_options enabled: true```
 id_method_name | Set custom method name to get ID of an object (If block is provided for the relationship, `id_method_name` is invoked on the return value of the block instead of the resource object) | ```has_many :locations, id_method_name: :place_ids ```
 object_method_name | Set custom method name to get related objects | ```has_many :locations, object_method_name: :places ```
 record_type | Set custom Object Type for a relationship | ```belongs_to :owner, record_type: :user```
@@ -460,15 +460,6 @@ polymorphic | Allows different record types for a polymorphic association | ```h
 polymorphic | Sets custom record types for each object class in a polymorphic association | ```has_many :targets, polymorphic: { Person => :person, Group => :group }```
 
 ### Instrumentation
-
-`fast_jsonapi` also has builtin [Skylight](https://www.skylight.io/) integration. To enable, add the following to an initializer:
-
-```ruby
-require 'fast_jsonapi/instrumentation/skylight'
-```
-
-Skylight relies on `ActiveSupport::Notifications` to track these two core methods. If you would like to use these notifications without using Skylight, simply require the instrumentation integration:
-
 ```ruby
 require 'fast_jsonapi/instrumentation'
 ```
@@ -482,12 +473,6 @@ It is also possible to instrument one method without the other by using one of t
 ```ruby
 require 'fast_jsonapi/instrumentation/serializable_hash'
 require 'fast_jsonapi/instrumentation/serialized_json'
-```
-
-Same goes for the Skylight integration:
-```ruby
-require 'fast_jsonapi/instrumentation/skylight/normalizers/serializable_hash'
-require 'fast_jsonapi/instrumentation/skylight/normalizers/serialized_json'
 ```
 
 ## Contributing

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require 'spec_helper'
 
 describe FastJsonapi::ObjectSerializer do
@@ -314,13 +316,6 @@ describe FastJsonapi::ObjectSerializer do
       expect(BlahBlahSerializer.record_type).to be :blah_blah
     end
 
-    it 'shouldnt set default_type for a serializer that doesnt follow convention' do
-      class BlahBlahSerializerBuilder
-        include FastJsonapi::ObjectSerializer
-      end
-      expect(BlahBlahSerializerBuilder.record_type).to be_nil
-    end
-
     it 'should set default_type for a namespaced serializer' do
       module V1
         class BlahSerializer
@@ -473,6 +468,16 @@ describe FastJsonapi::ObjectSerializer do
         options[:include] = [:actors]
         expect(serializable_hash['included']).to be_blank
       end
+
+    end
+  end
+
+  context 'when include has frozen array' do
+    let(:options) { { include: [:actors].freeze }}
+    let(:json) { MovieOptionalRelationshipSerializer.new(movie, options).serialized_json }
+
+    it 'does not raise and error' do
+      expect(json['included']).to_not be_blank
     end
   end
 

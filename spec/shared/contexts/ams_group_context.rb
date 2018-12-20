@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 RSpec.shared_context 'ams group class' do
   before(:context) do
     # models

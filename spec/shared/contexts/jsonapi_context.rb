@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 RSpec.shared_context 'jsonapi movie class' do
   before(:context) do
     # models

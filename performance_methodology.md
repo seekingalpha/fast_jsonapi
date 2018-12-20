@@ -26,7 +26,7 @@ The benchmark setup is simple with classes for ``` Movie, Actor, MovieType, User
 
 ## Benchmark Results
 
-We benchmarked results for creating a Ruby Hash. This approach removes the effect of chosen JSON string generation engines like OJ, Yajl etc. Benchmarks indicate that fast_jsonapi consistently performs around ```25 times``` faster than AMS in generating a ruby hash.
+We benchmarked results for creating a Ruby Hash. This approach removes the effect of chosen JSON string generation engines like OJ, Yajl etc. Benchmarks indicate that fast_jsonapi consistently performs around ```8-25 times``` faster than AMS in generating a ruby hash.
 
 We applied a similar benchmark on the operation to serialize the objects to a JSON string. This approach helps with ensuring some important criterias, such as:
 

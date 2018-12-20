@@ -1,6 +1,8 @@
+# frozen_string_literal: true
+
 module FastJsonapi
   class Relationship
-    attr_reader :key, :name, :id_method_name, :record_type, :object_method_name, :object_block, :serializer, :relationship_type, :cached, :polymorphic, :conditional_proc, :transform_method, :links, :lazy_load_data
+    attr_reader :key, :name, :id_method_name, :record_type, :object_method_name, :object_block, :serializer, :relationship_type, :cached, :polymorphic, :conditional_proc, :transform_method, :links, :lazy_load_data, :serializers_cache
 
     def initialize(
       key:,
@@ -32,6 +34,7 @@ module FastJsonapi
       @transform_method = transform_method
       @links = links || {}
       @lazy_load_data = lazy_load_data
+      @serializers_cache = {}
     end
 
     def serialize(record, serialization_params, output_hash)
@@ -63,21 +66,33 @@ module FastJsonapi
 
     def ids_hash_from_record_and_relationship(record, params = {})
       return ids_hash(
-        fetch_id(record, params)
+          fetch_id(record, params)
       ) unless polymorphic
 
       return unless associated_object = fetch_associated_object(record, params)
 
       return associated_object.map do |object|
-        id_hash_from_record object, polymorphic
+        id_hash_from_record object, polymorphic, @serializers_cache
       end if associated_object.respond_to? :map
 
-      id_hash_from_record associated_object, polymorphic
+      id_hash_from_record associated_object, polymorphic, @serializers_cache
     end
 
-    def id_hash_from_record(record, record_types)
+    def id_hash_from_record(record, record_types, serializers)
+      rec_klass = record.class
+      memoized_val = record_types[rec_klass]
+
+      associated_record_type = memoized_val || begin
+        serializer_klass = serializers[rec_klass]||=serializer.to_s.safe_constantize
+        if serializer_klass && serializer_klass.respond_to?(:record_type)
+          serializer_klass.record_type
+        else
+          run_key_transform(record.class.name.demodulize.underscore)
+        end
+      end
+
       # memoize the record type within the record_types dictionary, then assigning to record_type:
-      associated_record_type = record_types[record.class] ||= run_key_transform(record.class.name.demodulize.underscore)
+      record_types[record.class] = associated_record_type
       id_hash(record.id, associated_record_type)
     end
 
@@ -105,7 +120,7 @@ module FastJsonapi
 
     def add_links_hash(record, params, output_hash)
       output_hash[key][:links] = links.each_with_object({}) do |(key, method), hash|
-        Link.new(key: key, method: method).serialize(record, params, hash)\
+        Link.new(key: key, method: method).serialize(record, params, hash)
       end
     end
 
