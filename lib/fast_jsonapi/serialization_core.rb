@@ -4,6 +4,7 @@ require 'active_support/concern'
 require 'logger'
 require 'fast_jsonapi/serialization_cache'
 require 'lru_redux'
+require 'zlib'
 
 module FastJsonapi
   MandatoryField = Class.new(StandardError)
@@ -37,8 +38,6 @@ module FastJsonapi
             prefix_key:        self.prefix_key,
             name:              self.name,
             record_type:       self.record_type,
-            data_links:        self.data_links,
-            meta_to_serialize: self.meta_to_serialize,
             cache_key:         record.cache_key
         }
 
@@ -50,8 +49,8 @@ module FastJsonapi
           collector["vary_attribute_#{it}".to_sym] = record.public_send(it)
         end
 
-        serialization_settings = ::Oj.dump(cache_hash, mode: :compat)
-        ::XXhash.xxh32(serialization_settings)
+        hash_json = Oj.dump(cache_hash, mode: :compat)
+        Zlib.crc32(hash_json)
       end
 
       def id_hash(id, record_type, default_return=false)
@@ -123,7 +122,7 @@ module FastJsonapi
 
       # Override #to_json for alternative implementation
       def to_json(payload)
-        ::Oj.dump(payload, mode: :compat, time_format: :ruby, use_to_json: true) if payload.present?
+        Oj.dump(payload, mode: :compat, time_format: :ruby) if payload.present?
       end
 
       def parse_include_item(include_item)

@@ -39,7 +39,7 @@ module FastJsonapi
 
     def serialize(record, serialization_params, output_hash)
       if include_relationship?(record, serialization_params)
-        empty_case = relationship_type == :has_many ? [] : nil
+        empty_case = relationship_type == :has_many ? ::FastJsonapi::Consts::EMPTY_ARR : nil
 
         output_hash[key] = {}
         unless lazy_load_data

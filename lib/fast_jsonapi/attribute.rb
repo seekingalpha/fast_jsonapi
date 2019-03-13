@@ -4,7 +4,7 @@ module FastJsonapi
   class Attribute
     attr_reader :key, :method, :conditional_proc
 
-    def initialize(key:, method:, options: {})
+    def initialize(key:, method:, options: ::FastJsonapi::Consts::EMPTY_HASH)
       @key = key
       @method = method
       @conditional_proc = options[:if]

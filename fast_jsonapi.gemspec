@@ -26,14 +26,13 @@ Gem::Specification.new do |gem|
 
   gem.add_runtime_dependency(%q<lru_redux>, [">= 0"])
   gem.add_runtime_dependency(%q<oj>, ["~> 2.17.0"])
-  gem.add_runtime_dependency(%q<xxhash>, [">= 0"])
 
   gem.add_development_dependency(%q<rspec>, ["~> 3.5.0"])
   gem.add_development_dependency(%q<rspec-benchmark>, ["~> 0.3.0"])
   gem.add_development_dependency(%q<bundler>, ["~> 1.0"])
   gem.add_development_dependency(%q<byebug>, [">= 0"])
   gem.add_development_dependency(%q<active_model_serializers>, ["~> 0.10.7"])
-  gem.add_development_dependency(%q<sqlite3>, ["~> 1.3"])
+  gem.add_development_dependency(%q<sqlite3>, ["1.3.13"])
   gem.add_development_dependency(%q<jsonapi-rb>, ["~> 0.5.0"])
   gem.add_development_dependency(%q<jsonapi-serializers>, ["~> 1.0.0"])
 end

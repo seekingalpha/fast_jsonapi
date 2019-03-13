@@ -25,7 +25,7 @@ module FastJsonapi
       set_type(reflected_record_type) if reflected_record_type
     end
 
-    def initialize(resource, options = {})
+    def initialize(resource, options = ::FastJsonapi::Consts::EMPTY_HASH)
       process_options(options)
 
       @resource = resource
@@ -40,10 +40,19 @@ module FastJsonapi
 
     def hash_for_one_record
       serializable_hash = { data: nil }
-      serializable_hash[:meta] = @meta if @meta.present?
-      serializable_hash[:links] = @links if @links.present?
+      serializable_hash[:included] = @included if @includes && !@includes.empty?
+      if @meta && !@meta.empty?
+        serializable_hash[:meta] = @meta.transform_keys { |k| self.class.run_key_transform(k) }
+      end
+
+      if @links && !@links.empty?
+        serializable_hash[:links] = @links.transform_keys { |k| self.class.run_key_transform(k) }
+      end
 
       return serializable_hash unless @resource
+
+      record_type = self.class.record_type || @resource.class.name.demodulize.underscore
+      @known_included_objects["#{record_type}_#{self.class.id_from_record(@resource)}"] = @resource
 
       serializable_hash[:data] = self.class.record_hash(@resource, @fieldsets[self.class.record_type.to_sym], @params)
       serializable_hash[:included] = self.class.get_included_records(@resource, @includes, @known_included_objects, @fieldsets, @params) if @includes.present?
@@ -57,14 +66,23 @@ module FastJsonapi
       included = []
       fieldset = @fieldsets[self.class.record_type.to_sym]
       @resource.each do |record|
+        record_type = self.class.record_type || record.class.name.demodulize.underscore
+        @known_included_objects["#{record_type}_#{self.class.id_from_record(record)}"] = record
+
         data << self.class.record_hash(record, fieldset, @params)
         included.concat self.class.get_included_records(record, @includes, @known_included_objects, @fieldsets, @params) if @includes.present?
       end
 
       serializable_hash[:data] = data
-      serializable_hash[:included] = included if @includes.present?
-      serializable_hash[:meta] = @meta if @meta.present?
-      serializable_hash[:links] = @links if @links.present?
+      serializable_hash[:included] = included if @includes && !@includes.empty?
+      if @meta && !@meta.empty?
+        serializable_hash[:meta] = @meta.transform_keys { |k| self.class.run_key_transform(k) }
+      end
+
+      if @links && !@links.empty?
+        serializable_hash[:links] = @links.transform_keys { |k| self.class.run_key_transform(k) }
+      end
+
       serializable_hash
     end
 
@@ -75,20 +93,23 @@ module FastJsonapi
     private
 
     def process_options(options)
-      @fieldsets = deep_symbolize(options[:fields].presence || {})
-      @params = {}
-
-      return if options.blank?
-
+      @fieldsets = options[:fields] || ::FastJsonapi::Consts::EMPTY_HASH
+      @params    = {}
       @known_included_objects = {}
-      @meta = options[:meta]
-      @links = options[:links]
-      @is_collection = options[:is_collection]
-      @params = options[:params] || {}
+
+      return if !options || options.empty?
+
+      @meta                   = options[:meta]
+      @links                  = options[:links]
+      @is_collection          = options[:is_collection]
+      @params                 = options[:params] || {}
       raise ::ArgumentError.new("`params` option passed to serializer must be a hash") unless @params.is_a?(::Hash)
 
-      if options[:include].present?
-        @includes = options[:include].reject(&:blank?).map(&:to_sym)
+      @includes = options[:include].deep_dup if options[:include]
+
+      if @includes && !options[:bypass_include_validation]
+        @includes.reject!(&:blank?)
+        @includes.map!(&:to_sym)
         self.class.validate_includes!(@includes)
       end
     end
@@ -197,7 +218,7 @@ module FastJsonapi
 
       def attributes(*attributes_list, &block)
         attributes_list = attributes_list.first if attributes_list.first.class.is_a?(::Array)
-        options = attributes_list.last.is_a?(::Hash) ? attributes_list.pop : {}
+        options = attributes_list.last.is_a?(::Hash) ? attributes_list.pop : ::FastJsonapi::Consts::EMPTY_HASH
         self.attributes_to_serialize = {} if self.attributes_to_serialize.nil?
 
         attributes_list.each do |attr_name|
@@ -226,17 +247,17 @@ module FastJsonapi
         self.relationships_to_serialize[relationship.name] = relationship
       end
 
-      def has_many(relationship_name, options = {}, &block)
+      def has_many(relationship_name, options = ::FastJsonapi::Consts::EMPTY_HASH, &block)
         relationship = create_relationship(relationship_name, :has_many, options, block)
         add_relationship(relationship)
       end
 
-      def has_one(relationship_name, options = {}, &block)
+      def has_one(relationship_name, options = ::FastJsonapi::Consts::EMPTY_HASH, &block)
         relationship = create_relationship(relationship_name, :has_one, options, block)
         add_relationship(relationship)
       end
 
-      def belongs_to(relationship_name, options = {}, &block)
+      def belongs_to(relationship_name, options = ::FastJsonapi::Consts::EMPTY_HASH, &block)
         relationship = create_relationship(relationship_name, :belongs_to, options, block)
         add_relationship(relationship)
       end
@@ -299,7 +320,7 @@ module FastJsonapi
         option = options[:polymorphic]
         return false unless option.present?
         return option if option.respond_to?(:keys)
-        {}
+        ::FastJsonapi::Consts::EMPTY_HASH
       end
 
       def link(link_name, link_method_name = nil, &block)
@@ -319,7 +340,7 @@ module FastJsonapi
         includes.detect do |include_item|
           klass = self
           parse_include_item(include_item).each do |parsed_include|
-            relationships_to_serialize = klass.relationships_to_serialize || {}
+            relationships_to_serialize = klass.relationships_to_serialize || ::FastJsonapi::Consts::EMPTY_HASH
             relationship_to_include = relationships_to_serialize[parsed_include]
             raise ::ArgumentError, "#{parsed_include} is not specified as a relationship on #{klass.name}" unless relationship_to_include
             klass = relationship_to_include.serializer.to_s.constantize unless relationship_to_include.polymorphic.is_a?(::Hash)
