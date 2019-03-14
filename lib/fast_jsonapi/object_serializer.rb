@@ -107,7 +107,7 @@ module FastJsonapi
 
       @includes = options[:include].deep_dup if options[:include]
 
-      if @includes && !options[:bypass_include_validation]
+      if @includes && options[:include_validation]
         @includes.reject!(&:blank?)
         @includes.map!(&:to_sym)
         self.class.validate_includes!(@includes)

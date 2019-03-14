@@ -141,6 +141,7 @@ describe FastJsonapi::ObjectSerializer do
       options = {}
       options[:meta] = { total: 2 }
       options[:include] = [:blah_blah]
+      options[:include_validation] = true
       expect { MovieSerializer.new([movie, movie], options).serializable_hash }.to raise_error(ArgumentError)
     end
 
@@ -154,6 +155,7 @@ describe FastJsonapi::ObjectSerializer do
       options = {}
       options[:meta] = { total: 2 }
       options[:include] = ['']
+      options[:include_validation] = true
       expect(MovieSerializer.new([movie, movie], options).serializable_hash.keys).to eq [:data, :meta]
       options[:include] = [nil]
       expect(MovieSerializer.new([movie, movie], options).serializable_hash.keys).to eq [:data, :meta]
