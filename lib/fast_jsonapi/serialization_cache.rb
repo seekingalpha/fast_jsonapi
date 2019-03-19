@@ -1,9 +1,5 @@
 # frozen_string_literal: true
 
-require 'singleton'
-require 'forwardable'
-require 'lru_redux'
-
 module FastJsonapi
   module Cache
     class SerializationCacheBase
