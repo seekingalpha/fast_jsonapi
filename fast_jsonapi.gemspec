@@ -25,7 +25,7 @@ Gem::Specification.new do |gem|
   gem.add_development_dependency(%q<activerecord>, ["4.2.10"])
 
   gem.add_runtime_dependency(%q<lru_redux>, [">= 0"])
-  gem.add_runtime_dependency(%q<oj>, ["~> 2.17.0"])
+  gem.add_runtime_dependency(%q<oj>)
 
   gem.add_development_dependency(%q<rspec>, ["~> 3.5.0"])
   gem.add_development_dependency(%q<rspec-benchmark>, ["~> 0.3.0"])
